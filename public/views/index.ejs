@@ -81,11 +81,11 @@
                 <h4>Пользователи</h4>
                 <div style="overflow: auto">
                     <% users.forEach((user) => { %>
-                        <div class="user" data-user="<%= user %>">
-                            <% if (user === name) { %>
+                        <div class="user" data-user="<%= user.name %>">
+                            <% if (user.name === name) { %>
                                 <h6>Я</h6>
                             <% } else { %>
-                                <h6><%= user %></h6>
+                                <h6><%= user.name %></h6>
                             <% } %>
                         </div>
                     <% }) %>

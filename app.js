@@ -1,18 +1,17 @@
 const express = require('express'),
     app = express(),
     session = require('express-session'),
-    fs = require('fs')
+    moment = require('moment-timezone'),
+    db = require('./db')
 require('dotenv').config();
+
+moment.tz.setDefault('Europe/Moscow').locale('ru')
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 app.set('view engine', require('ejs').renderFile);
 app.set('views', __dirname + '/public/views');
-
-function getUsers() {
-    return JSON.parse(fs.readFileSync('users.json', 'utf-8'));
-}
 
 app.use(
     session({
@@ -33,19 +32,22 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    let users = getUsers();
+    db.getDb()
+        .then(async db => {
+            let collection = db.collection('users');
+            let name = req.body.name;
+            let user = await collection.findOne({name: name});
+            if (!user) {
+                await collection.insertOne({name: name});
+            }
 
-    if (!users.includes(req.body.name)) {
-        users.push(req.body.name);
-        fs.writeFile('users.json', JSON.stringify(users), (err) => {
-            if (err) throw err;
-        });
-    }
+            req.session.auth = true;
+            req.session.name = name;
 
-    req.session.auth = true;
-    req.session.name = req.body.name;
-
-    res.redirect('/');
+            res.redirect('/');
+        })
+        .catch(console.error)
+        .finally(() => db.client.close());
 });
 
 app.use((req, res, next) => {
@@ -54,13 +56,20 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    let messages = JSON.parse(fs.readFileSync('messages.json', 'utf-8'));
+    db.getDb()
+        .then(async db => {
+            let messages = await db.collection('messages').find().toArray();
+            let users = await db.collection('users').find().toArray();
+            console.log(users)
 
-    res.render('index.ejs', {
-        messages: messages,
-        name: req.session.name,
-        users: getUsers()
-    });
+            res.render('index.ejs', {
+                messages: messages,
+                name: req.session.name,
+                users: users
+            });
+        })
+        .catch(console.error)
+        .finally(() => db.client.close());
 });
 
 app.get('/logout', (req, res) => {
@@ -78,25 +87,15 @@ const io = require('socket.io')(server);
 
 io.on('connection', socket => {
     socket.on('newMessage', data => {
-        let time = new Date();
+        let message = {from: data.from, text: data.message, time: moment().format('LT')};
 
-        let hours = time.getHours();
-        hours = hours < 10 ? `0${hours}` : hours;
-        let minutes = time.getMinutes();
-        minutes = minutes < 10 ? `0${minutes}` : minutes;
+        db.getDb()
+            .then(async db => {
+                await db.collection('messages').insertOne(message);
 
-        let message = {from: data.from, text: data.message, time: hours + ':' + minutes};
-
-        fs.readFile('messages.json', 'utf-8', (err, data) => {
-            if (err) throw err;
-            let messages = JSON.parse(data);
-            messages.push(message);
-
-            fs.writeFile('messages.json', JSON.stringify(messages), (err) => {
-                if (err) throw err;
-            });
-        });
-
-        io.sockets.emit('addMessage', message);
+                io.sockets.emit('addMessage', message);
+            })
+            .catch(console.error)
+            .finally(() => db.client.close());
     });
 });
