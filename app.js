@@ -2,7 +2,8 @@ const express = require('express'),
     app = express(),
     session = require('express-session'),
     moment = require('moment-timezone'),
-    db = require('./db')
+    db = require('./db'),
+    bcrypt = require('bcrypt')
 require('dotenv').config();
 
 moment.tz.setDefault('Europe/Moscow').locale('ru')
@@ -20,7 +21,7 @@ app.use(
     })
 );
 
-app.use('/login', (req, res, next) => {
+app.use(['/login', '/registration'], (req, res, next) => {
     if (req.session.auth) {
         res.redirect('/');
     }
@@ -32,22 +33,76 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    db.getDb()
+    db.connect()
         .then(async db => {
             let collection = db.collection('users');
             let name = req.body.name;
+            let password = req.body.password;
             let user = await collection.findOne({name: name});
-            if (!user) {
-                await collection.insertOne({name: name});
+
+            if (!user || !password) {
+                res.render('login.ejs', {
+                    error: 'Имя пользователя или пароль неверны'
+                });
+            } else {
+                bcrypt.compare(password, user.password)
+                    .then(r => {
+                        if (r) {
+                            req.session.auth = true;
+                            req.session.name = name;
+
+                            res.redirect('/');
+                        } else {
+                            res.render('login.ejs', {
+                                error: 'Имя пользователя или пароль неверны'
+                            });
+                        }
+                    });
             }
-
-            req.session.auth = true;
-            req.session.name = name;
-
-            res.redirect('/');
         })
         .catch(console.error)
         .finally(() => db.client.close());
+});
+
+app.get('/register', (req, res) => {
+   res.render('register.ejs');
+});
+
+app.post('/register', (req, res) => {
+   db.connect()
+       .then(async db => {
+           let collection = db.collection('users');
+           let name = req.body.name;
+           let password = req.body.password;
+           let repeatPassword = req.body.repeatPassword;
+
+           let errors = {};
+           if (!name) errors.name = 'Заполните поле';
+           else if (await collection.findOne({name: name})) errors.name = 'Имя пользователя занято';
+           if (password.length < 8) errors.password = 'Минимальная длина пароля - 8 символов';
+           else if (password !== repeatPassword) errors.repeatPassword = 'Пароли не совпадают';
+
+           if (!errors.length) {
+               await bcrypt.hash(password, 10)
+                   .then((hash) => {
+                       collection.insertOne({
+                           name: name,
+                           password: hash
+                       }).then(() => {
+                           req.session.auth = true;
+                           req.session.name = name;
+
+                           res.redirect('/');
+                       })
+                   })
+                   .catch(console.error);
+           } else {
+               res.render('register.ejs', {
+                   errors: errors
+               });
+           }
+       })
+       .catch(console.error)
 });
 
 app.use((req, res, next) => {
@@ -56,7 +111,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-    db.getDb()
+    db.connect()
         .then(async db => {
             let messages = await db.collection('messages').find().toArray();
             let users = await db.collection('users').find().toArray();
@@ -89,7 +144,7 @@ io.on('connection', socket => {
     socket.on('newMessage', data => {
         let message = {from: data.from, text: data.message, time: moment().format('LT')};
 
-        db.getDb()
+        db.connect()
             .then(async db => {
                 await db.collection('messages').insertOne(message);
 
