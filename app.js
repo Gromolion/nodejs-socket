@@ -87,7 +87,9 @@ app.post('/register', (req, res) => {
                    .then((hash) => {
                        collection.insertOne({
                            name: name,
-                           password: hash
+                           password: hash,
+                           online: false,
+                           socket: false
                        }).then(() => {
                            req.session.auth = true;
                            req.session.name = name;
@@ -149,6 +151,32 @@ io.on('connection', socket => {
                 await db.collection('messages').insertOne(message);
 
                 io.sockets.emit('addMessage', message);
+            })
+            .catch(console.error)
+            .finally(() => db.client.close());
+    });
+
+    socket.on('login', data => {
+        db.connect()
+            .then(async db => {
+                await db.collection('users').updateOne({name: data.name}, {
+                    $set: {
+                        online: true,
+                        socket: socket.id
+                    }
+                });
+            })
+            .catch(console.error);
+    });
+    socket.on('disconnect', () => {
+        db.connect()
+            .then(async db => {
+                await db.collection('users').updateOne({socket: socket.id}, {
+                    $set: {
+                        online: false,
+                        socket: false
+                    }
+                });
             })
             .catch(console.error)
             .finally(() => db.client.close());

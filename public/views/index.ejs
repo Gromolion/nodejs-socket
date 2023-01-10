@@ -68,6 +68,18 @@
             top: -4px;
             position: relative;
         }
+        .dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.online {
+            background-color: green;
+        }
+        .dot.offline {
+            background-color: grey;
+        }
     </style>
 </head>
 <body>
@@ -85,7 +97,10 @@
                             <% if (user.name === name) { %>
                                 <h6>Я</h6>
                             <% } else { %>
-                                <h6><%= user.name %></h6>
+                                <h6>
+                                    <%= user.name %>
+                                    <span class="dot <%= user.online ? 'online' : 'offline' %>"></span>
+                                </h6>
                             <% } %>
                         </div>
                     <% }) %>
@@ -123,6 +138,8 @@
         let messageSend = $('#send');
         let chat = $('#chat');
         let from = '<%= name %>';
+
+        socket.emit('login', {name: from})
 
         chat.scrollTop(chat.height());
 
