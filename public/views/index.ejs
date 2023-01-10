@@ -77,9 +77,9 @@
             <a href="/logout" id="logout">Выйти</a>
         </div>
         <div class="d-flex" style="height: 93%;">
-            <div class="w-25 rounded p-2 bg" style="overflow: auto">
+            <div class="w-25 rounded p-2 bg">
                 <h4>Пользователи</h4>
-                <div>
+                <div style="overflow: auto">
                     <% users.forEach((user) => { %>
                         <div class="user" data-user="<%= user %>">
                             <% if (user === name) { %>
@@ -107,9 +107,6 @@
                         <% }) %>
                     <% } %>
                 </div>
-                <div>
-                    <span id="typing" style="color: gray"></span>
-                </div>
                 <div class="d-flex">
                     <input type="text" id="message" class="rounded" name="message" placeholder="Введите сообщение...">
                     <button class="rounded" id="send">Отправить</button>
@@ -120,20 +117,18 @@
 </body>
 <script>
     $(()=> {
-        let socket = io.connect('http://localhost:7000');
+        let socket = io.connect('http://localhost:8080');
 
         let message = $('#message');
         let messageSend = $('#send');
         let chat = $('#chat');
         let from = '<%= name %>';
-        let typing = $('#typing');
 
         chat.scrollTop(chat.height());
 
         messageSend.on('click', () => {
             socket.emit('newMessage', {from: from, message: message.val()});
             message.val('');
-            message.emit('clear');
         });
 
         socket.on('addMessage', (data) => {
