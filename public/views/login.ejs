@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <%- include('header.ejs') -%>
+    <title>Авторизация</title>
+    <style>
+        button {
+            background-color: #bff5e2;
+            border: 1px solid #949494;
+            border-radius: 10px;
+            padding: 5px 10px;
+            transition: 0.1s linear;
+        }
+        button:hover {
+            background-color: #96c2b2;
+        }
+    </style>
+</head>
+<body>
+<div class="container bg-light rounded w-25" style="margin: 200px auto">
+    <form action="/login" method="post" class="p-3 text-center">
+        <h5 class="text-start">Авторизация</h5>
+        <input class="my-3" type="text" name="name" placeholder="Введите ваше имя">
+        <div>
+            <button>Войти</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>
