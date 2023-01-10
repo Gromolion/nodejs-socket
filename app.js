@@ -1,7 +1,8 @@
 const express = require('express'),
     app = express(),
     session = require('express-session'),
-    fs = require('fs')
+    fs = require('fs'),
+    dotenv = require('dotenv')
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
