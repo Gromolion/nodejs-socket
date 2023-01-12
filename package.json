@@ -1,26 +1,30 @@
 {
-  "name": "nodejs-socket",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "node app",
-    "start.dev": "nodemon app"
-  },
-  "dependencies": {
-    "bcrypt": "^5.1.0",
-    "cookie-parser": "^1.4.6",
-    "dotenv": "^16.0.3",
-    "ejs": "^3.1.8",
-    "express": "^4.18.2",
-    "express-session": "^1.17.3",
-    "express-unless": "^2.1.3",
-    "moment-timezone": "^0.5.40",
-    "mongodb": "^3.7.3",
-    "nodemon": "^2.0.20",
-    "reflect-metadata": "^0.1.13",
-    "socket.io": "^4.5.4",
-    "typeorm": "^0.3.11"
-  },
-  "devDependencies": {
-    "@types/node": "^18.11.18"
-  }
+   "name": "nodejs-socket",
+   "version": "1.0.0",
+   "scripts": {
+      "start": "ts-node src/index.ts",
+      "start.dev": "nodemon src/index.ts",
+      "typeorm": "typeorm-ts-node-commonjs"
+   },
+   "dependencies": {
+      "bcrypt": "^5.1.0",
+      "cookie-parser": "^1.4.6",
+      "dotenv": "^16.0.3",
+      "ejs": "^3.1.8",
+      "express": "^4.18.2",
+      "express-session": "^1.17.3",
+      "express-unless": "^2.1.3",
+      "moment-timezone": "^0.5.40",
+      "mongodb": "^3.7.3",
+      "nodemon": "^2.0.20",
+      "reflect-metadata": "^0.1.13",
+      "socket.io": "^4.5.4",
+      "typeorm": "0.3.11",
+      "pg": "^8.4.0"
+   },
+   "devDependencies": {
+      "@types/node": "^16.11.10",
+      "ts-node": "10.7.0",
+      "typescript": "4.5.2"
+   }
 }

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <%- include('header.ejs') -%>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js" integrity="sha384-/KNQL8Nu5gCHLqwqfQjA689Hhoqgi2S84SNUxC3roTe4EhJ9AfLkp8QiQcU8AMzI" crossorigin="anonymous"></script>
+    <title>Чат</title>
+    <style>
+        body {
+            height: 90vh;
+            padding: 0;
+        }
+        .bg {
+            background-color: #DDD7F7;
+        }
+        #logout {
+            text-decoration: none;
+            color: #d06464;
+            transition: 0.1s linear;
+            border-radius: 10px;
+            padding: 2px 10px;
+        }
+        #logout:hover {
+            background-color: #d4cafd;
+        }
+        .user {
+            padding: 5px 10px;
+            border-radius: 10px;
+            background-color: #c0cfea;
+            margin-bottom: 10px;
+        }
+        .message {
+            padding: 5px 10px;
+            border-radius: 10px;
+            background-color: #c0cfea;
+            box-shadow: 4px 5px 8px 0 rgba(0, 0, 0, 0.74);
+            transition: .4s ease-in;
+        }
+        .time {
+            font-size: 10px;
+            position: absolute;
+            right: 8px;
+            bottom: 2px;
+            color: #575757;
+        }
+        .reply {
+            position: absolute;
+            right: 8px;
+            top: 2px;
+            transition: 0.1s linear;
+            padding: 0 6px 3px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .reply:hover {
+            background-color: #a5bbe1;
+        }
+        #message {
+            height: 45px;
+            width: 87%;
+            border: 1px solid grey;
+            padding: 5px 10px;
+        }
+        #message:focus {
+            outline: none;
+            box-shadow: -8px -10px 8px 3px rgba(238, 121, 238, 0.2);
+        }
+        #send {
+            height: 45px;
+            width: 13%;
+            border: 1px solid black;
+            transition: 0.1s linear;
+            background-color: #b7c8e8;
+        }
+        #send:hover {
+            background-color: #a7bee8;
+        }
+        .from-me {
+            display:flex;justify-content: end
+        }
+        .username {
+            font-size: 10px;
+            font-weight: bold;
+        }
+        #chat {
+            overflow: auto;
+        }
+        .text {
+            top: -4px;
+            position: relative;
+        }
+        .dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.online {
+            background-color: green;
+        }
+        .dot.offline {
+            background-color: grey;
+        }
+        #replyed {
+            width: 25%;
+            font-size: 12px;
+            background-color: #C0CFEA;
+            border-radius: 10px 10px 0 10px;
+            padding: 2px 5px;
+            box-shadow: 2px -1px 8px -1px rgba(0, 0, 0, 0.74);
+            display: none;
+        }
+        .replyed {
+            font-size: 12px;
+            border-radius: 10px;
+            border: 1px solid #939393;
+            padding: 2px 5px;
+            box-shadow: -4px 4px 8px 0 rgba(34, 60, 80, 0.2) inset;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: .1s linear;
+        }
+        .replyed:hover {
+            background-color: #afc3e7;
+        }
+        #unreply {
+            cursor: pointer;
+            padding: 0 2px 2px;
+            border-radius: 50%;
+        }
+        #unreply:hover {
+            background-color: #a5bbe1;
+        }
+    </style>
+</head>
+<body>
+    <div class="rounded p-3" style="margin: 50px 100px; background-color: #F6EDFA; height: 95%">
+        <div class="py-1 px-2 rounded mb-2 bg d-flex justify-content-between">
+            <h5 class="m-0"><%= name %></h5>
+            <a href="/logout" id="logout">Выйти</a>
+        </div>
+        <div class="d-flex" style="height: 93%;">
+            <div class="w-25 rounded p-2 bg">
+                <h4>Пользователи</h4>
+                <div style="overflow: auto">
+                    <% users.forEach((user) => { %>
+                        <div class="user" data-user="<%= user.name %>">
+                            <% if (user.name === name) { %>
+                                <h6>Я</h6>
+                            <% } else { %>
+                                <h6>
+                                    <%= user.name %>
+                                    <span class="dot <%= user.online ? 'online' : 'offline' %>"></span>
+                                </h6>
+                            <% } %>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+            <div class="bg rounded p-2 w-75 d-flex justify-content-between" style="margin-left: 20px; flex-direction: column;">
+                <div id="chat">
+                    <% if (messages) { %>
+                        <% messages.forEach((message) => { %>
+                            <div class="mb-2 <% if (message.user.name === name) { %>from-me<% } %>">
+                                <div class="message" style="position: relative;max-width: 50%; width: max-content; min-width: 20%;">
+                                    <span class="username"><%= message.user.name %></span><br>
+                                    <% if (message.parent)  { %>
+                                        <div class="replyed" data-id="<%= message.parent.id %>">
+                                            <span class="replyed-name" style="font-weight: bold"><%= message.parent.user.name %></span>
+                                            <div class="d-flex justify-content-between">
+                                                <div class="replyed-text">
+                                                    <%= message.parent.text %>
+                                                </div>
+                                                <div class="replyed-time" style="font-size: 10px">
+                                                    <%= message.parent.time.slice(0, 5) %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    <span class="text"><%= message.text %></span>
+                                    <span class="time" style="font-size: 10px;position: absolute;right: 8px;bottom: 2px;color: #575757;"><%= message.time.slice(0, 5) %></span>
+                                    <span class="reply" data-id="<%= message.id %>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-reply" viewBox="0 0 16 16">
+                                          <path d="M6.598 5.013a.144.144 0 0 1 .202.134V6.3a.5.5 0 0 0 .5.5c.667 0 2.013.005 3.3.822.984.624 1.99 1.76 2.595 3.876-1.02-.983-2.185-1.516-3.205-1.799a8.74 8.74 0 0 0-1.921-.306 7.404 7.404 0 0 0-.798.008h-.013l-.005.001h-.001L7.3 9.9l-.05-.498a.5.5 0 0 0-.45.498v1.153c0 .108-.11.176-.202.134L2.614 8.254a.503.503 0 0 0-.042-.028.147.147 0 0 1 0-.252.499.499 0 0 0 .042-.028l3.984-2.933zM7.8 10.386c.068 0 .143.003.223.006.434.02 1.034.086 1.7.271 1.326.368 2.896 1.202 3.94 3.08a.5.5 0 0 0 .933-.305c-.464-3.71-1.886-5.662-3.46-6.66-1.245-.79-2.527-.942-3.336-.971v-.66a1.144 1.144 0 0 0-1.767-.96l-3.994 2.94a1.147 1.147 0 0 0 0 1.946l3.994 2.94a1.144 1.144 0 0 0 1.767-.96v-.667z"/>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } %>
+                </div>
+                <div>
+                    <div id="replyed">
+                        <input type="hidden" id="replyed-id">
+                        <div class="d-flex justify-content-between">
+                            <div class="d-flex align-items-center">
+                                Ответить на
+                            </div>
+                            <div id="unreply">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+                                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <span id="replyed-name" style="font-weight: bold"></span>
+                        <div class="d-flex justify-content-between">
+                            <div id="replyed-text">
+                            </div>
+                            <div id="replyed-time" style="font-size: 10px">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex">
+                        <input type="text" id="message" class="rounded" name="message" placeholder="Введите сообщение...">
+                        <button class="rounded" id="send">Отправить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    $(()=> {
+        let socket = io.connect('http://localhost:8080');
+
+        let message = $('#message');
+        let messageSend = $('#send');
+        let chat = $('#chat');
+        let from = '<%= name %>';
+
+        socket.emit('login', {name: from})
+
+        let replyedId = $('#replyed-id');
+
+        chat.scrollTop(chat.prop('scrollHeight'));
+
+        messageSend.on('click', () => {
+            if (!message.val()) return;
+            socket.emit('newMessage', {from: from, message: message.val(), parent: replyedId.val()});
+            $('#replyed').fadeOut();
+            replyedId.val('');
+            message.val('');
+        });
+
+        socket.on('addMessage', (message) => {
+            chat.append(
+                '<div class="mb-2 ' + (message.user.name === from ? 'from-me' : '') + '">' +
+                    '<div class="message" style="position: relative;max-width: 50%; width: max-content; min-width: 20%;">' +
+                        '<span class="username">' + message.user.name + '</span><br>' +
+                        (message.parent ?
+                            '<div class="replyed" data-id="' + message.parent.id + '">' +
+                                '<span class="replyed-name" style="font-weight: bold">' + message.parent.user.name + '</span>' +
+                                '<div class="d-flex justify-content-between">' +
+                                    '<div class="replyed-text">' +
+                                        message.parent.text +
+                                    '</div>' +
+                                    '<div class="replyed-time" style="font-size: 10px">' +
+                                        message.parent.time.slice(0, 5) +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>'
+                            : ''
+                        ) +
+                        '<span class="text">' + message.text + '</span>' +
+                        '<span style="font-size: 10px;position: absolute;right: 8px;bottom: 2px;color: #575757;">' +
+                            message.time.slice(0, 5) +
+                        '</span>' +
+                        '<span class="reply" data-id="' + message.id + '">' +
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-reply" viewBox="0 0 16 16">' +
+                                '<path d="M6.598 5.013a.144.144 0 0 1 .202.134V6.3a.5.5 0 0 0 .5.5c.667 0 2.013.005 3.3.822.984.624 1.99 1.76 2.595 3.876-1.02-.983-2.185-1.516-3.205-1.799a8.74 8.74 0 0 0-1.921-.306 7.404 7.404 0 0 0-.798.008h-.013l-.005.001h-.001L7.3 9.9l-.05-.498a.5.5 0 0 0-.45.498v1.153c0 .108-.11.176-.202.134L2.614 8.254a.503.503 0 0 0-.042-.028.147.147 0 0 1 0-.252.499.499 0 0 0 .042-.028l3.984-2.933zM7.8 10.386c.068 0 .143.003.223.006.434.02 1.034.086 1.7.271 1.326.368 2.896 1.202 3.94 3.08a.5.5 0 0 0 .933-.305c-.464-3.71-1.886-5.662-3.46-6.66-1.245-.79-2.527-.942-3.336-.971v-.66a1.144 1.144 0 0 0-1.767-.96l-3.994 2.94a1.147 1.147 0 0 0 0 1.946l3.994 2.94a1.144 1.144 0 0 0 1.767-.96v-.667z"/>' +
+                            '</svg>' +
+                        '</span>' +
+                    '</div>' +
+                '</div>'
+            );
+        });
+
+        $('.reply').on('click', function() {
+            let message = $(this).closest('.message');
+
+            replyedId.val($(this).data('id'));
+            $('#replyed-name').html(message.find('.username').html());
+
+            let text = message.find('.text').html();
+            if (text.length > 32) text = text.slice(0, 29) + '...';
+
+            $('#replyed-text').html(text);
+            $('#replyed-time').html(message.find('.time').html());
+
+            $('#replyed').fadeIn();
+        });
+
+        $('#unreply').on('click', function() {
+            $('#replyed').fadeOut();
+            replyedId.val('');
+        });
+
+        $('.replyed').on('click', function () {
+            let parentId = $(this).data('id');
+            let parent = document.querySelector('.reply[data-id="' + parentId + '"]').parentElement
+
+            parent.parentElement.scrollIntoView({
+                behavior: 'smooth',
+            });
+
+            parent.style.backgroundColor = '#a6bfea';
+            setTimeout(() => {
+                parent.style.backgroundColor = '#c0cfea';
+            }, 3000);
+        });
+    });
+</script>
+</html>
